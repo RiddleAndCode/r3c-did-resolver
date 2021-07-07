@@ -1,0 +1,29 @@
+{
+  "name": "r3c-did-resolver",
+  "version": "0.0.1",
+  "description": "DID Document resolver fro R3C network",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "tap"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/riddleandcode/r3c-did-resolver"
+  },
+  "keywords": [
+    "ssi",
+    "did",
+    "resolver",
+    "r3c",
+    "bigchaindb"
+  ],
+  "author": "David Dashyan",
+  "license": "GPL-3.0-or-later",
+  "dependencies": {
+    "did-resolver": "3.1.0"
+  },
+  "devDependencies": {
+    "nock": "^13.1.1",
+    "tap": "^15.0.9"
+  }
+}
