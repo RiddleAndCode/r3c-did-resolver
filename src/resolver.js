@@ -4,8 +4,21 @@ const did = require('did-resolver');
 const http = require('http');
 
 /**
+ * Object representing a DID (returned by did-resolver.parse)
+ * @typedef {object} ParsedDid
+ * @param {string} parsedDid.did
+ * @param {string} parsedDid.method
+ * @param {string} parsedDid.id
+ */
+
+/**
  * Fetch http request body.
- * @param {string | ?} options - URL or http options.
+ * @param {(string | object)} options - URL or http options.
+ * @param {string} options.host
+ * @param {number} options.port
+ * @param {string} options.path
+ * @param {string} options.method=GET
+ * @returns {Promise.<string>} - Body of http request result.
  */
 function getBody(options) {
   return new Promise(function(resolve, reject) {
@@ -31,7 +44,7 @@ function getBody(options) {
 /**
  * Fetch transaction from R3C endpoint
  * @param {string} id - Transaction id
- * @return {?}
+ * @returns {object} - Transactioin object
  */
 async function fetchTx (id) {
   // TODO catch error
@@ -40,9 +53,8 @@ async function fetchTx (id) {
 
 /**
  * Construct DidDocument from fetched R3C transaction.
- * @constructor
  * @param {ParsedDid} parsedDid
- * @return {DidDocument}
+ * @returns {object} - Did document object
  */
 async function getDidDocument(parsedDid) {
   let tx = await fetchTx(parsedDid.id);
@@ -97,11 +109,12 @@ ed25519-sha-256 type are allowed');
 }
 
 /**
- * Comment
- * @param {string} did
- * @param {parsed} ParsedDid - TODO define
- * @param {didResolver} DidResolver - TODO define
- * @param {options} DidResolutionOptions - TODO define
+ * Return Did document object constructed from fetched R3C
+ * transaction.
+ * @param {string} did - DID string
+ * @param {ParsedDid} ParsedDid
+ * @param {*} DidResolver
+ * @param {*} DidResolutionOptions
  */
 async function resolve(did, parsed, didResolver, options) {
 
@@ -142,8 +155,14 @@ async function resolve(did, parsed, didResolver, options) {
 }
 
 /**
- * Get resolver registry for r3 -- a { r3c: resolve } object.
- * @returns {ResolverRegistry}
+ * R3C resolver maping.
+ * @typedef {object} R3CResolver
+ * @param {function} R3CResolver.r3c
+ */
+
+/**
+ * Get resolver registry.
+ * @returns {R3CResolver} - a { r3c: resolve } object.
  */
 function getResolver() {
   return { r3c: resolve };
