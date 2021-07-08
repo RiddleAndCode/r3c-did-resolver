@@ -11,7 +11,7 @@ function getBody(options) {
   return new Promise(function(resolve, reject) {
     var req = http.request(options, (res) => {
       if (res.statusCode != 200) {
-        reject(new Error('Request failed: ' + res.statusCode));
+        reject(new Error(`Request failed: ${res.statusCode}`));
       }
       var body = '';
       res.on('data', (chunk) => {
@@ -35,7 +35,7 @@ function getBody(options) {
  */
 async function fetchTx (id) {
   // TODO catch error
-  return JSON.parse(await getBody(config.R3C_TX_ENDPOINT + '/' + id));
+  return JSON.parse(await getBody(`${config.R3C_TX_ENDPOINT}/${id}`));
 }
 
 /**

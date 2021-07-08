@@ -13,7 +13,7 @@ const {
 
 // Setup mocking server intercepting conections to tx endpoint
 nock(config.R3C_MAIN_HOST)
-  .get(config.R3C_MAIN_API_TX_PATH + '/' + fixtures.TEST_TX_ID)
+  .get(`${config.R3C_MAIN_API_TX_PATH}/${fixtures.TEST_TX_ID}`)
   .times(3) // NOTE: (!!!) increment for every additional request
   .reply(200, fixtures.TEST_TX);
 

@@ -14,7 +14,7 @@ const TEST_TX = {
                'public_keys': ['DQ6F6J8PYS11RMmwcnB8bPWwHkoPFytxNUydRPQh9TBS']}],
   'version': '2.0'};
 
-const TEST_TX_DID = 'did:r3c:' + TEST_TX_ID;
+const TEST_TX_DID = `did:r3c:${TEST_TX_ID}`;
 
 
 // This is an example document that should produced from TEST_TX.  At
