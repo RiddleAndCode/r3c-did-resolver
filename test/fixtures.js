@@ -27,6 +27,42 @@ const TEST_DID_DOCUMENT = {
   '@context': [
     'https://www.w3.org/ns/did/v1',
     'https://w3id.org/security/suites/ed25519-2020/v1'
+  ],
+  service: {
+    id: 'https://riddleandcode.com',
+    type: 'LinkedDomains',
+    serviceEndpoint: 'https://main.r3c.network'
+  },
+  verificationMethod: [{
+    id: `${TEST_TX_DID}#input-0`,
+    type: 'Ed25519VerificationKey2020',
+    "controller": `${TEST_TX_DID}#output-0`, // <- not a typo
+    "publicKeyBase58": 'DQ6F6J8PYS11RMmwcnB8bPWwHkoPFytxNUydRPQh9TBS'
+  }, {
+    id: `${TEST_TX_DID}#output-0`,
+    type: 'Ed25519VerificationKey2020',
+    "controller": `${TEST_TX_DID}#output-0`,
+    "publicKeyBase58": 'DQ6F6J8PYS11RMmwcnB8bPWwHkoPFytxNUydRPQh9TBS'
+  }],
+  assertionMethod: [{
+    id: `${TEST_TX_DID}#input-0`,
+    type: 'Ed25519VerificationKey2020',
+    "controller": `${TEST_TX_DID}#output-0`, // <- not a typo
+    "publicKeyBase58": 'DQ6F6J8PYS11RMmwcnB8bPWwHkoPFytxNUydRPQh9TBS'
+  }],
+  capabilityInvocation: [{
+    id: `${TEST_TX_DID}#output-0`,
+    type: 'Ed25519VerificationKey2020',
+    "controller": `${TEST_TX_DID}#output-0`,
+    "publicKeyBase58": 'DQ6F6J8PYS11RMmwcnB8bPWwHkoPFytxNUydRPQh9TBS'
+  }]
+};
+
+const TEST_DID_DOCUMENT_COMPACT = {
+  id: TEST_TX_DID,
+  '@context': [
+    'https://www.w3.org/ns/did/v1',
+    'https://w3id.org/security/suites/ed25519-2020/v1'
     // 'https://w3c-ccg.github.io/verifiable-conditions/contexts/verifiable-conditions-2021-v1.json'
   ],
   service: {
@@ -41,19 +77,21 @@ const TEST_DID_DOCUMENT = {
     id: `${TEST_TX_DID}#input-0`,
     type: 'Ed25519VerificationKey2020',
     "controller": `${TEST_TX_DID}#output-0`, // <- not a typo
-    "publicKeyMultibase": 'zDQ6F6J8PYS11RMmwcnB8bPWwHkoPFytxNUydRPQh9TBS'
+    "publicKeyBase58": 'DQ6F6J8PYS11RMmwcnB8bPWwHkoPFytxNUydRPQh9TBS'
   }, {
     id: `${TEST_TX_DID}#output-0`,
     type: 'Ed25519VerificationKey2020',
     "controller": `${TEST_TX_DID}#output-0`,
-    "publicKeyMultibase": 'zDQ6F6J8PYS11RMmwcnB8bPWwHkoPFytxNUydRPQh9TBS'
+    "publicKeyBase58": 'DQ6F6J8PYS11RMmwcnB8bPWwHkoPFytxNUydRPQh9TBS'
   }],
-  assertionMethod: [`${TEST_TX_DID}#input-0`]
+  assertionMethod: [`${TEST_TX_DID}#input-0`],
+  capabilityInvocation: [`${TEST_TX_DID}#output-0`]
 };
 
 module.exports = {
   TEST_TX,
   TEST_TX_ID,
   TEST_TX_DID,
-  TEST_DID_DOCUMENT
+  TEST_DID_DOCUMENT,
+  TEST_DID_DOCUMENT_COMPACT
 };

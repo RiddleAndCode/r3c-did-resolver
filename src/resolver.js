@@ -1,11 +1,11 @@
-// TODO Fill&fix jsDoc comments
 const config = require('./config');
+const errMessages = require('./errMessages');
 const did = require('did-resolver');
 const http = require('http');
 
 /**
  * Object representing a DID (returned by did-resolver.parse)
- * @typedef {object} ParsedDid
+ * @typedef {Object} ParsedDid
  * @param {string} parsedDid.did
  * @param {string} parsedDid.method
  * @param {string} parsedDid.id
@@ -13,7 +13,7 @@ const http = require('http');
 
 /**
  * Fetch http request body.
- * @param {(string | object)} options - URL or http options.
+ * @param {(string | Object)} options - URL or http options.
  * @param {string} options.host
  * @param {number} options.port
  * @param {string} options.path
@@ -44,20 +44,70 @@ function getBody(options) {
 /**
  * Fetch transaction from R3C endpoint
  * @param {string} id - Transaction id
- * @returns {object} - Transactioin object
+ * @returns {Object} - Transactioin object
  */
 async function fetchTx (id) {
   // TODO catch error
-  return JSON.parse(await getBody(`${config.R3C_TX_ENDPOINT}/${id}`));
+  return JSON.parse(
+    await getBody(
+      `${config.R3C_TX_ENDPOINT}?asset_id=${id}&last_tx=true`
+    )
+  );
+}
+
+/**
+ * Throw error if tranaction metdata is invalid.
+ * @param {Object} tx
+ * @returns {(Object | undefined)} - Additional verification methods
+ *   mapping. Or undefined.
+ */
+function checkTxMetadata(tx) {
+  if (tx.metadata === undefined)
+    throw new Error(errMessages.invalidTxError);
+  if (tx.metadata !== null
+      && tx.metadata.verificationMethods !== undefined) {
+    let vm = tx.metadata.verificationMethods;
+    if (vm.controller || vm.capabilityInvocation)
+      throw new Error(errMessages.capError);
+    return vm;
+  }
+  return {};
+}
+
+/**
+ * Transform metadata field objects to correct verificaton methods
+ * object.
+ * @param {Object} vms
+ * @param {Object} did - DID URL to be used as controller
+ * @returns {(Object | undefined)} - Additional verification methods
+ *   mapping. Or undefined.
+ */
+function transformMetaMethods(vms, did) {
+  const reducer = (acc, [k, v], i) => (
+    // FIXME: here I make an asumption that there will be only one
+    // key for each "verification purpose"
+    acc[k] = [{
+      id: `${did}#meta-${i}`,
+      controller: `${did}#output-0`,
+      ...v
+      // v contains mapping of form {
+      //   type: <keyType>,
+      //   <publicKeyType>: <putlicKeyValue>
+      // }
+    }],
+    acc
+  );
+  return Object.entries(vms).reduce(reducer, {});
 }
 
 /**
  * Construct DidDocument from fetched R3C transaction.
- * @param {ParsedDid} parsedDid
- * @returns {object} - Did document object
+ * @param {Object} tx - BigchainDB transaciont objec
+ * @param {Object} [options]
+ * @param {Object} options.compact - Do not expand relative DID liks.
+ * @returns {Object} - Did document object
  */
-async function getDidDocument(parsedDid) {
-  let tx = await fetchTx(parsedDid.id);
+async function txToDidDocument(tx, options = {}) {
 
   if (tx.inputs.length != 1
       || tx.inputs[0].owners_before.length != 1) {
@@ -70,23 +120,21 @@ are allowed');
 ed25519-sha-256 type are allowed');
   }
 
-  // NOTE publicKeyMultibase encodes base encoding types with leading
-  // char. In our case base58 encoding denoted by 'z'
-  // more here: https://github.com/multiformats/multibase/blob/master/multibase.csv
+  let txDID = `did:r3c:${tx.id}`;
   let verificationMethod = [{
-    id: `${parsedDid.did}#input-0`,
+    id: `${txDID}#input-0`,
     type: 'Ed25519VerificationKey2020',
-    controller: `${parsedDid.did}#output-0`,
-    //                            ^^^^^^^^
+    controller: `${txDID}#output-0`,
+    //                    ^^^^^^^^
     // assuming here that contrloller here is an output controller,
     // same goes for output-0
-    publicKeyMultibase: `z${tx.inputs[0].owners_before[0]}`
+    publicKeyBase58: `${tx.inputs[0].owners_before[0]}`
   }, {
-    id: `${parsedDid.did}#output-0`,
+    id: `${txDID}#output-0`,
     type: 'Ed25519VerificationKey2020',
-    controller: `${parsedDid.did}#output-0`,
-    publicKeyMultibase: `z${tx.outputs[0].public_keys[0]}`
-    //                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    controller: `${txDID}#output-0`,
+    publicKeyBase58: `${tx.outputs[0].public_keys[0]}`
+    //                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     // same as tx.outputs[0].condition.details.public_key
   }];
 
@@ -96,10 +144,17 @@ ed25519-sha-256 type are allowed');
       config.ED25519_CONTEXT
       // TODO replace with config.VEFIFIABLE_CONDITIONS_CONTEXT
     ],
-    id: parsedDid.did,
+    id: txDID,
     verificationMethod,
-    assertionMethod: [`${parsedDid.did}#input-0`],
-    // assertion is pointing to tx input
+    assertionMethod: [
+      options.compact ? `${txDID}#input-0` : verificationMethod[0]
+    ],
+    capabilityInvocation: [
+      options.compact ? `${txDID}#output-0` : verificationMethod[1]
+    ],
+    ...transformMetaMethods(checkTxMetadata(tx), txDID),
+    // meta-methods keys shadow assertion and capabilityInvocation
+    // fields if present
     service: {
       id: 'https://riddleandcode.com',
       type: 'LinkedDomains',
@@ -124,7 +179,7 @@ async function resolve(did, parsed, didResolver, options) {
 
   do {
     try {
-      didDocument = await getDidDocument(parsed);
+      didDocument = await txToDidDocument(await fetchTx(parsed.id));
     } catch (error) {
       err = `resolver-error: ${error}`;
       break;
@@ -156,7 +211,7 @@ async function resolve(did, parsed, didResolver, options) {
 
 /**
  * R3C resolver maping.
- * @typedef {object} R3CResolver
+ * @typedef {Object} R3CResolver
  * @param {function} R3CResolver.r3c
  */
 
@@ -172,5 +227,7 @@ module.exports = {
   resolve,
   fetchTx,
   getResolver,
-  getDidDocument
+  txToDidDocument,
+  checkTxMetadata,
+  transformMetaMethods
 };

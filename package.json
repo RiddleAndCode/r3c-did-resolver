@@ -2,7 +2,7 @@
   "name": "r3c-did-resolver",
   "version": "0.0.1",
   "description": "DID Document resolver fro R3C network",
-  "main": "src/app.js",
+  "main": "src/index.js",
   "scripts": {
     "test": "tap"
   },
