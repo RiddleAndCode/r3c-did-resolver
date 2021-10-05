@@ -4,14 +4,17 @@ const VEFIFIABLE_CONDITIONS_CONTEXT = 'https://w3c-ccg.github.io/verifiable-cond
 const ED25519_CONTEXT = 'https://w3id.org/security/suites/ed25519-2020/v1';
 
 
-const R3C_MAIN_HOST = 'http://main.r3c.network';
+const R3C_TRANSPORT = 'https://';
+const R3C_MAIN_HOST = 'main.r3c.network';
+const R3C_ROOT_EDNPOINT = `${R3C_TRANSPORT}${R3C_MAIN_HOST}`;
 const R3C_MAIN_API_PATH = '/api/v1';
 const R3C_MAIN_API_TX_PATH = `${R3C_MAIN_API_PATH}/transactions`;
-const R3C_TX_ENDPOINT = `${R3C_MAIN_HOST}${R3C_MAIN_API_TX_PATH}`;
+const R3C_TX_ENDPOINT = `${R3C_ROOT_EDNPOINT}${R3C_MAIN_API_TX_PATH}`;
 
 module.exports = {
   DID_CONTEXT,
   VEFIFIABLE_CONDITIONS_CONTEXT,
+  R3C_ROOT_EDNPOINT,
   R3C_MAIN_HOST,
   R3C_MAIN_API_TX_PATH,
   R3C_TX_ENDPOINT,

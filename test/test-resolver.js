@@ -16,7 +16,7 @@ const {
 } = require('../src/resolver');
 
 // Setup mocking server intercepting conections to tx endpoint
-nock(config.R3C_MAIN_HOST)
+nock(`http://${config.R3C_MAIN_HOST}`)
   .get(`${config.R3C_MAIN_API_TX_PATH}`)
   .query({
     asset_id: fixtures.TEST_TX_ID,
