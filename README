@@ -1,5 +1,6 @@
 <!-- -*- mode: markdown -*- -->
 # DID Document resolver for R3C network
+> Alpha sofware! Subject to change. Breaks unexpectedly.
 
 This library provides an interface for resolution of Decentralized
 Identifiers (DIDs)[^4] on R3C network and defines R3C DID URI scheme.
