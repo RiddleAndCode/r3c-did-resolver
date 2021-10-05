@@ -1,2 +1,187 @@
 <!-- -*- mode: markdown -*- -->
-DID Document resolver for R3C network
+# DID Document resolver for R3C network
+
+This library provides an interface for resolution of Decentralized
+Identifiers (DIDs)[^4] on R3C network and defines R3C DID URI scheme.
+This library conforms to the interface implemented in
+*did-resolver*[^1] library.
+
+R3C Network is a BigchainDB[^2] network instance but R3C DID
+method[^3] as it implemented here doesn't reflect any BigchainDB
+construct directly and rather has mechanics of it's own.
+
+## Capabilities
+
+R3C DID method aims to have following capabilities.
+
+- Create identifiers representing abstract entity (a person, a thing,
+  an indivisible asset...)
+- Update entity information and transfer entity ownership
+- Discard entity by sending it to a burn address
+
+This results in some restrictions that we place on which BigchainDB
+transactions are valid for be transformed to R3C DID documents.
+
+## BigchainDB transaction spec recap
+
+To further understand restrictions in place lets first recap on what a
+transaction is.  If you know BigchainDB transaction spec[^6] you can
+skip this section.
+
+```jsx
+{
+    "id": id, // sha3-256hash of this transaction with id field set to null
+    "version": version,
+    "inputs": inputs,
+    "outputs": outputs,
+    "operation": operation,
+    "asset": asset,
+    "metadata": metadata
+ }
+```
+
+- The core of a transaction are `asset` and `metadata` fields — this
+  what this transaction represents (object, subject, resource etc...).
+  The content is arbitrary.  Difference between asset and metadata is
+  that metadata is mutable whereas asset can not be changed.
+- Verification of the fact that we've got transaction we asked is non
+  issue since `id` is the hash of transaction
+- Once asset has been created with CREATE `operation` it can be then
+  transferred with TRANSFER `operation`.
+- Then `outputs` specify how further TRANSFER transactions can occur.
+  Each transaction has an array of outputs.
+  - Each output defines amount of and condition where condition is one
+    of supported by BigchainDB cryptoconditions[^5].
+  - In simple terms cryptocondition, as it used in BigchanDB, is a
+    special format for serializing a request for either Ed25519
+    signature or a ThresholdEd25519 signature.
+    - Ed25519 condition verified (or fulfilled in cryptoconditions
+      terms) by Ed25519 signature.
+    - ThresholdEd25519 is a bit more complicated.  It consist of
+      threshold integer value and set of sub-conditions where each
+      sub-condition is either Ed25519 condition or another
+      ThresholdEd25519 condition.  As one may guess threshold integer
+      defines a number of sub-conditions to be fulfilled for the whole
+      condition to be fulfilled.
+- The last part are the `inputs`. Inputs are for placing data needed
+  for fulfillment of outputs.  An input object contains information of
+  which output it fulfills — a transaction id, and output index
+  (remember outputs field is an array), and the fulfillment itself.
+  Fulfillment can be thought as special format for serializing
+  signatures for cryptoconditions.
+
+---
+
+There are few aspects in regards to BigchainDB transactions we need to
+note:
+
+- Notion of "owner" is controlled by outputs or more specifically by
+  cryptoconditions.  So even though Alice may be creator of an asset
+  the real owner(s) is the one who can fulfill the outputs.
+- Asset content is only present in CREATE transaction.  All further
+  transactions operating on an asset have the link to the creation
+  transaction instead of the asset field, in form of `{"id":<CREATE
+  transaction id>}`.  Also each TRANSFER transaction has unique id
+  itself, just like CREATE transaction.
+- When fulfilling an output of a transaction the whole output amount
+  must be "spent" (when owner wants to transfer only part of an output
+  amount the owner may transfer change back to them-self, ala
+  bitcoin).
+- When making new TRANSFER transaction not all outputs has to be spend
+  (but each single output has to be spent fully).
+
+## R3C DID document life-cycle
+
+R3C DIDs take form of `did:r3c:<txid>`, where `txid` is CREATE
+transaction *id*.
+
+BigchainDB transaction spec[^6] allows us manipulating asset in ways
+that out of scope for this library.  Major restrictions we are placing
+is that:
+
+- only single output amount of `1`, `Ed25519` condition transactions
+  are allowed to represent R3C DID documents
+- TRANSFER transactions can not be referenced directly (more on it
+  below).
+
+  Once a single output amount of `1` asset created (CREATE
+transaction) it can be referenced using its *id* (`did:r3c:<id>`).
+Unlimited number of revisions can be made to this document (TRANSFER
+transactions), but they always referenced by the *id* of CREATE
+transaction.  Resolver always takes the last available revision.
+
+## DID document <-> BigchainDB tx properties mapping
+
+BigchainDB transaction is transformed to R3C DID document according to
+following rules.
+
+- Input and Output of a transaction are transformed to
+  `Ed25519VerificationKey2020`[^8] JSON objects and placed in
+  `VerificationMethod`[^9] field of a a DID document.
+- `id` fields of `VerificationMethod`s are extended with fragments.
+  - input extended with `#input-0` fragment
+  - output extended with `#output-0` fragment
+- Public keys found in BigchainDB transactions used as
+  `publicKeyBase58` values.
+- `VerificationMethod`s are then referenced by other DID properties
+  - `assertionMethod` references verification method with `#input-0`
+    fragment
+  - `capabilityInvocation` references verification method with
+    `#input-0` fragment
+- `controller` fields are all set to `did:r3c:<tx>#output-0`. Where tx
+  is `id` of current transaction.
+- Additional DID document properties can be defined in `metadata`
+  field of a transaction.  Properties found in metadata have highest
+  precedence and able to shadow properties derived form other parts of
+  BigchainDB transaction.
+- Only exception to above rule is `capabilityInvocation` field.  For a
+  reason that ownership transfer in controlled by transaction outputs
+  on protocol level and can not be influenced.
+- `service` property advertising 'https://main.r3c.network' endpoint
+  added.
+
+Above rules can be seen in action in `txToDidDocument` function.
+
+## Usage
+
+```js
+
+const { Resolver } = require('did-resolver');
+
+// import r3c resolver
+const r3c = require('r3c-did-resolver');
+// import any other resolver
+const ethr = require('ethr-did-resolver');
+const web = require('web-did-resolver');
+const sov = require('sov-did-resolver');
+
+// construct resolver object
+const resolver = new Resolver({
+    ...r3c.getResolver(),
+    ...ethr.getResolver(),
+    ...web.getResolver(),
+    ...sov.getResolver(),
+});
+
+// resolve any DID from imported methods
+didDoc = resolver.resolve(
+    "did:r3c:135e55e01819b2a8dfbad7489ab5ebfe1b92768880ee9e0d7204a49956e846d5"
+);
+```
+
+---
+[^1]: https://github.com/decentralized-identity/did-resolver
+
+[^2]: https://github.com/bigchaindb/bigchaindb
+
+[^3]: https://www.w3.org/TR/did-core/#dfn-did-methods
+
+[^4]: https://www.w3.org/TR/did-core/
+
+[^5]: https://datatracker.ietf.org/doc/html/draft-thomas-crypto-conditions-03
+
+[^6]: https://github.com/bigchaindb/BEPs/tree/master/13
+
+[^8]: https://w3c-ccg.github.io/lds-ed25519-2020/
+
+[^9]: https://www.w3.org/TR/did-core/#dfn-verificationmethod
